@@ -33,17 +33,23 @@ Files, directories, and symlinks all count towards inode limits.
 | :----: | :----: | :----: | :----: | :----: | :----: |
 | Home | /storage/home | 16 GB | 500,000 | Daily  | Configuration files |
 | Work | /storage/work | 128 GB | 1 million | Daily  | User data |
-| Scratch | /scratch | None | 1 million | None | Temporary files |
+| Scratch | /scratch | 50 TB* | 1 million | None | Temporary files |
 | Group | /storage/group | Specific to<br>allocation | 1 million<br>per TB | Daily | Shared data |
+
+!!! warning "Scratch quota grace period"
+    Scratch quotas have a brief grace period when exceeding the size quota 
+    to avoid interruption to running jobs. Monitor scratch usage and maintain 
+    file storage below the quota to avoid job interruptions.
+
 
 ## Checking usage
 
 Exceeding quotas on home or work directories can cause errors 
-when running progrms, writing files, or even logging in.
+when running programs, writing files, or even logging in.
 
 There are two tools to check on your disk usage:
 
-- `check_storage_quotas` reports your total usage;
+- `quota_check` reports your total usage in directories that you have access to;
 - [`du`][du] reports the sizes of files and directories.
 [du]: https://man7.org/linux/man-pages/man1/du.1.html
 
@@ -58,6 +64,11 @@ lists directory sizes in order from large to small
 (the output of du is "piped" to [sort][sort]).
 [sort]: https://man7.org/linux/man-pages/man1/sort.1.html
 
+!!! note "Include hidden files when checking disk usage"
+    `du -sch .[!.]* * | sort -h` shows the size of all files and directories,
+    including hidden ones, and sorts them by size.
+    Useful when large hidden files may be contributing to quota issues.
+
 ## Quota issues in home
 
 Many user configuration files and packages are stored by default in `home`.
@@ -66,18 +77,29 @@ This commonly occurs with directories such as
 
  - `.local` - used by Python
  - `.comsol` - used by Comsol
+ - `.conda` - used by Anaconda
+ - `R` - used by R
 
-These [dot files](https://missing.csail.mit.edu/2019/dotfiles/) are hidden by default, 
-but you can view them with `ls -la`.
+These [dot files](https://missing.csail.mit.edu/2019/dotfiles/) (and directories) 
+are hidden by default, but you can view them with `ls -la`.
 
 If the size of one of these directories becomes a problem, 
-it can be moved to `work`, and a link placed in your home directory.
-To make such a link, in your home directory execute (e.g., for `.local`)
-```
-ln -s .local work/.local
-```
-This creates an alias (in Unix-speak, a "symbolic link") named `.local`,
+it can be moved to `work`, and a [symbolic link] created 
 which points to the directory you moved to `work`.
+
+For example, the commands needed to move the `.local` directory 
+would look like:
+
+```
+# first move the directory to /storage/work/
+mv ~/.local $WORK/.local
+
+# create a symlink in home pointing to the new location in work
+ln -s $WORK/.local .local
+```
+
+[symbolic link]:https://www.lenovo.com/us/en/glossary/symbolic-link/
+
 
 ## Archive storage
 
@@ -91,7 +113,7 @@ you should pack the directory into a single file with `tar`
 (see [Packing files](managing-files.md#packing-files))
 before transferring.
 
-!!! warning "Do not use archive storage for sensitive data."
+!!! warning "Avoid using archive storage for sensitive data."
      If you need to archive data or software that must adhere to regulatory requirements
      please contact ICDS or the [Office of Information Security](https://security.psu.edu).
 
